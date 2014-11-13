@@ -28,31 +28,47 @@
  * OTHER DEALINGS IN THE SOFTWARE.
  */
 
-#include "layouterfactory.h"
+#include "vertlayouter.h"
+#include "../rendererdata.h"
+#include "../layoutdata.h"
 
-
-extern AbstractLayouter* LineLayouterFactoryFunc (QObject*);
-extern AbstractLayouter* VertLayouterFactoryFunc (QObject*);
-extern AbstractLayouter* BoxLayouterFactoryFunc (QObject*);
-extern AbstractLayouter* BoxLayouterOptimizedFactoryFunc (QObject*);
-
-LayouterFactory::LayouterFactory(QObject *parent) :
-    QObject(parent)
+VertLayouter::VertLayouter(QObject *parent) :
+    AbstractLayouter(parent)
 {
-    m_factorys["Line layout"] = &LineLayouterFactoryFunc;
-    m_factorys["Vertical layout"] = &VertLayouterFactoryFunc;
-    m_factorys["Box layout"] = &BoxLayouterFactoryFunc;
-    m_factorys["Box layout (optimized)"] = &BoxLayouterOptimizedFactoryFunc;
 }
 
 
-QStringList LayouterFactory::names() const {
-    return m_factorys.keys();
-}
-
-AbstractLayouter* LayouterFactory::build(const QString &name,QObject* parent) {
-    if (m_factorys.contains(name)) {
-        return m_factorys[name](parent);
+void VertLayouter::PlaceImages(const QVector<LayoutChar>& chars) {
+    if (chars.isEmpty()) return;
+    int num_c = chars.size();
+    int min_y = chars.front().y;
+    int max_y = chars.front().y + chars.front().h;
+    int min_x = chars.front().x;
+    int max_x = chars.front().x + chars.front().w;
+    foreach (const LayoutChar& c, chars) {
+        if (c.y<min_y)
+            min_y = c.y;
+        if ((c.y+c.h)>max_y)
+            max_y = c.y+c.h;
+        if (c.x<min_x)
+            min_x = c.x;
+        if ((c.x+c.w)>max_x)
+            max_x = c.x+c.w;
     }
-    return 0;
+    resize(max_x-min_x,(max_y-min_y)*num_c);
+    //int x = 0;
+    int y = 0;
+    foreach (const LayoutChar& c, chars) {
+        LayoutChar l = c;
+        l.x = (c.x-min_x);
+        l.y = (c.y-min_y)+y;
+        place(l);
+        y+=(max_y-min_y);
+    }
 }
+
+
+AbstractLayouter* VertLayouterFactoryFunc (QObject* parent) {
+    return new VertLayouter(parent);
+}
+
